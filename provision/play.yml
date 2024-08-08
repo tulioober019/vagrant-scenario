@@ -1,0 +1,84 @@
+# -- Add epel repository on every server -- #
+- name: Add epel repository on every server.
+  hosts: all
+  become: True
+  become_user: root
+  tasks:
+    - name: Add EPEL Repository.
+      ansible.builtin.dnf:
+        update_cache: true
+        name: epel-release
+        state: present
+
+# -- Installing packages on the servers -- #
+- name: Install the packages and start the corresponding services on each server.
+  hosts: all
+  become: True
+  become_user: root
+  vars:
+    packages:
+      - servername: server1
+        packages:
+          - nginx
+          - php
+          - php-cli
+          - php-common
+          - php-mysqlnd
+          - php-ldap
+          - postfix
+          - dovecot
+          - cockpit
+      - servername: server2
+        packages: 
+          - bind 
+          - bind-utils
+          - cockpit
+      - servername: server3
+        packages:
+          - 389-ds-base
+          - mariadb-server
+          - cockpit
+    services:
+        server1:
+          - nginx.service
+          - postfix.service
+          - dovecot.service
+          - cockpit.socket
+        server2: 
+          - named.service
+          - cockpit.socket
+        server3:
+          - mariadb.service
+          - cockpit.socket
+  tasks:
+    - name: Install packages for all servers.
+      ansible.builtin.dnf:
+        update_cache: true
+        name: "{{ item.packages }}"
+        state: present
+      when: ansible_hostname == item.servername
+      loop: "{{ packages }}"
+
+    - name: Start and enable services on server1.
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: True
+      loop: "{{ services.server1 }}"
+      when: ansible_hostname == "server1"
+
+    - name: Start and enable services on server2.
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: True
+      loop: "{{ services.server2 }}"
+      when: ansible_hostname == "server2"
+
+    - name: Start and enable services on server3.
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: True
+      loop: "{{ services.server3 }}"
+      when: ansible_hostname == "server3"
