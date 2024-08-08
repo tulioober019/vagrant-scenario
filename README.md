@@ -1,6 +1,6 @@
 # vagrant-scenario
 
-```
+```ruby
 Vagrant.configure("2") do |config|
 
     # -- Configuration paramters for each virtual machine -- #
