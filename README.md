@@ -20,6 +20,8 @@ Vagrant.configure("2") do |config|
     # All the machines will be running on centos stream 9.
     config.vm.box = "centos/stream9"
 
+    config.vm.box_url = "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-Vagrant-9-latest.x86_64.vagrant-virtualbox.box"
+
     # * In case that the machines are up and running, you will see a message like the following:
     config.vm.post_up_message = "If you are seeing this message, then your enviorment is working properly!"
 
@@ -52,14 +54,7 @@ Vagrant.configure("2") do |config|
         end
     end
 
-    # -- Ansible configuration. -- #
-    config.vm.provision "ansible" do |ansible|
-
-        # Path to playbook that is going to execute on the hosts.
-        ansible.playbook = "provision/play.yml"
-
-        # Ansible compatibility mode.
-        ansible.compatibility_mode = "1.8"
-    end
+    # * Provisioner configuration. * #
+    config.vm.provision "ansible", playbook: "provision/playbook.yml", compatibility_mode: "1.8"
 end
 ```
