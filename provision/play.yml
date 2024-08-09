@@ -10,75 +10,101 @@
         name: epel-release
         state: present
 
-# -- Installing packages on the servers -- #
-- name: Install the packages and start the corresponding services on each server.
-  hosts: all
+# -- Installing dependencies on each server -- #
+
+# * Install dependencies on server1 * #
+- name: Setup dependencies on server1.
+  hosts: server1
   become: True
   become_user: root
   vars:
     packages:
-      - servername: server1
-        packages:
-          - nginx
-          - php
-          - php-cli
-          - php-common
-          - php-mysqlnd
-          - php-ldap
-          - postfix
-          - dovecot
-          - cockpit
-      - servername: server2
-        packages: 
-          - bind 
-          - bind-utils
-          - cockpit
-      - servername: server3
-        packages:
-          - 389-ds-base
-          - mariadb-server
-          - cockpit
+      - nginx
+      - php
+      - php-cli
+      - php-common
+      - php-mysqlnd
+      - php-ldap
+      - postfix
+      - dovecot
+      - cockpit
     services:
-        server1:
-          - nginx.service
-          - postfix.service
-          - dovecot.service
-          - cockpit.socket
-        server2: 
-          - named.service
-          - cockpit.socket
-        server3:
-          - mariadb.service
-          - cockpit.socket
+      - nginx.service
+      - postfix.service
+      - dovecot.service
+      - cockpit.socket
   tasks:
-    - name: Install packages for all servers.
-      ansible.builtin.dnf:
-        update_cache: true
-        name: "{{ item.packages }}"
+    - name: Install packages.
+      dnf:
+        update_cache: True
+        name: "{{ packages }}"
         state: present
-      when: ansible_hostname == item.servername
-      loop: "{{ packages }}"
-
-    - name: Start and enable services on server1.
-      ansible.builtin.systemd:
+      notify: Start services.
+  handlers:
+    - name: Start services.
+      systemd:
         name: "{{ item }}"
         state: started
-        enabled: True
-      loop: "{{ services.server1 }}"
-      when: ansible_hostname == "server1"
+        enabled: true
+      loop: "{{ services }}"
 
-    - name: Start and enable services on server2.
-      ansible.builtin.systemd:
+# * Install dependencies on server2. * #
+- name: Setup dependencies on server2.
+  hosts: server2
+  become: True
+  become_user: root
+  vars:
+    packages:
+      - bind 
+      - bind-utils
+      - cockpit
+    services:
+      - named.service
+      - cockpit.socket
+  tasks:
+    - name: Install packages.
+      dnf:
+        update_cache: True
+        name: "{{ packages }}"
+        state: present
+      notify: Start services.
+  handlers:
+    - name: Start services.
+      systemd:
         name: "{{ item }}"
         state: started
-        enabled: True
-      loop: "{{ services.server2 }}"
-      when: ansible_hostname == "server2"
+        enabled: true
+      loop: "{{ services }}"
 
-    - name: Start and enable services on server3.
-      ansible.builtin.systemd:
+# * Install dependencies on server3. * #
+- name: Setup dependencies on server3.
+  hosts: server3
+  become: True
+  become_user: root
+  vars:
+    packages:
+      - 389-ds-base
+      - mariadb-server
+      - cockpit
+      - cockpit-389-ds
+    services:
+      - mariadb.service
+      - cockpit.socket
+  tasks:
+    - name: Enable repository.
+      community.general.copr:
+        name: "@389ds/389-directory-server"
+        state: enabled
+    - name: Install packages.
+      dnf:
+        update_cache: True
+        name: "{{ packages }}"
+        state: present
+      notify: Start services.
+  handlers:
+    - name: Start services.
+      systemd:
         name: "{{ item }}"
         state: started
-        enabled: True
-      loop: "{{ services.server3 }}"
-      when: ansible_hostname == "server3"
+        enabled: true
+      loop: "{{ services }}"
